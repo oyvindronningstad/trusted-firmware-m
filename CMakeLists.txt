@@ -10,8 +10,12 @@ cmake_minimum_required(VERSION 3.7)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include("Common/BuildSys")
 
+set(NS_APP True)
+
 add_subdirectory(secure_fw)
-add_subdirectory(app)
+if (NS_APP)
+    add_subdirectory(app)
+endif()
 if (BL2)
     add_subdirectory(bl2/ext/mcuboot)
 endif()

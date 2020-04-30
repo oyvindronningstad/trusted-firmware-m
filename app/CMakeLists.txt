@@ -72,7 +72,6 @@ embedded_include_directories(PATH ${TFM_ROOT_DIR}/app ABSOLUTE)
 
 set(NS_APP_SRC "${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Config/RTX_Config.c"
 	"${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Source/rtx_lib.c"
-	"${APP_DIR}/main_ns.c"
 	"${APP_DIR}/tfm_integ_test.c"
 	"${APP_DIR}/os_wrapper_cmsis_rtos_v2.c"
 	"${TFM_ROOT_DIR}/interface/src/log/tfm_log_raw.c"
@@ -223,6 +222,79 @@ add_subdirectory(${TFM_ROOT_DIR}/test ${CMAKE_BINARY_DIR}/test/non_secure_test)
 # One can be executed from the primary slot flash partition and other from the
 # secondary slot. Only the linking phase is different. This function captures
 # common settings and eliminates copy-paste.
+function(create_app_lib)
+	set( _OPTIONS_ARGS)                       #Option (on/off) arguments (e.g. IGNORE_CASE)
+	set( _ONE_VALUE_ARGS VENEER_NAME POSTFIX) #Single option arguments (e.g. PATH "./foo/bar")
+	set( _MULTI_VALUE_ARGS)                   #List arguments (e.g. LANGUAGES C ASM CXX)
+	cmake_parse_arguments(_MY_PARAMS "${_OPTIONS_ARGS}" "${_ONE_VALUE_ARGS}" "${_MULTI_VALUE_ARGS}" ${ARGN})
+
+	set(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}${_MY_PARAMS_POSTFIX}.o)
+	set(ALL_LIB ${PROJECT_NAME}_all${_MY_PARAMS_POSTFIX})
+
+	add_library(${ALL_LIB} $<TARGET_OBJECTS:${PROJECT_OBJ_LIB}>)
+
+	#Add the RTX library
+	if(NOT DEFINED RTX_LIB_PATH)
+		message(FATAL_ERROR "ERROR: Incomplete Configuration: RTX_LIB_PATH is not defined.")
+	endif()
+	target_link_libraries(${ALL_LIB} "${RTX_LIB_PATH}")
+
+	#Add the PSA API compliance test libraries
+	if(PSA_API_TEST_NS)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/val/val_nspe.a")
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/platform/pal_nspe.a")
+	endif()
+	if(PSA_API_TEST_NS AND PSA_API_TEST_INTERNAL_TRUSTED_STORAGE)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/dev_apis/internal_trusted_storage/test_combine.a")
+	endif()
+	if(PSA_API_TEST_NS AND PSA_API_TEST_PROTECTED_STORAGE)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/dev_apis/protected_storage/test_combine.a")
+	endif()
+	if(PSA_API_TEST_NS AND PSA_API_TEST_CRYPTO)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/dev_apis/crypto/test_combine.a")
+	endif()
+	if(PSA_API_TEST_NS AND PSA_API_TEST_INITIAL_ATTESTATION)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/dev_apis/initial_attestation/test_combine.a")
+	endif()
+	if(PSA_API_TEST_NS AND PSA_API_TEST_IPC)
+		target_link_libraries(${ALL_LIB} "${PSA_API_TEST_BUILD_PATH}/ff/ipc/test_combine.a")
+	endif()
+
+	if(NOT DEFINED PLATFORM_LINK_INCLUDES)
+		message(FATAL_ERROR "ERROR: Incomplete Configuration: PLATFORM_LINK_INCLUDES is not defined.")
+	endif()
+	embedded_set_target_link_includes(TARGET ${ALL_LIB} INCLUDES "${PLATFORM_LINK_INCLUDES}")
+
+	#We depend on the non secure tests. See if the library target is available.
+	if(TARGET tfm_non_secure_tests)
+		#If yes, then use the library.
+		target_link_libraries(${ALL_LIB} tfm_non_secure_tests)
+		#Ensure library is built first.
+		add_dependencies(${ALL_LIB} tfm_non_secure_tests)
+	endif()
+
+	#Ensure secure_fw is built before our executable.
+	add_dependencies(${ALL_LIB} ${S_BIN})
+
+	if (NOT DEFINED TFM_MULTI_CORE_TOPOLOGY OR NOT TFM_MULTI_CORE_TOPOLOGY)
+		if (NOT DEFINED S_VENEER_PATH)
+			if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/../secure_fw)
+				set (S_VENEER_PATH "${CMAKE_CURRENT_BINARY_DIR}/../secure_fw")
+			else()
+				message(FATAL_ERROR "No valid path for S_VENEER_PATH, secure_fw is built?")
+			endif()
+		endif()
+
+		#Add the veneers to the executable.
+		set(S_VENEER_FILE "${S_VENEER_PATH}/${VENEER_NAME}")
+		set_property(TARGET ${ALL_LIB} APPEND PROPERTY LINK_LIBRARIES ${S_VENEER_FILE})
+	endif()
+endfunction(create_app_lib)
+
+# For the non-swapping BL2 configuration two executables need to be built.
+# One can be executed from the primary slot flash partition and other from the
+# secondary slot. Only the linking phase is different. This function captures
+# common settings and eliminates copy-paste.
 function(set_up_app_build)
 	set( _OPTIONS_ARGS)                                                            #Option (on/off) arguments (e.g. IGNORE_CASE)
 	set( _ONE_VALUE_ARGS NS_TARGET S_TARGET FULL_BIN SIGN_BIN VENEER_NAME POSTFIX) #Single option arguments (e.g. PATH "./foo/bar")
@@ -254,9 +326,17 @@ function(set_up_app_build)
 	set(FULL_NAME ${_MY_PARAMS_FULL_BIN}${_MY_PARAMS_POSTFIX})
 	set(SIGN_NAME ${_MY_PARAMS_SIGN_BIN}${_MY_PARAMS_POSTFIX})
 	set(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}${_MY_PARAMS_POSTFIX}.o)
+	set(ALL_LIB ${PROJECT_NAME}_all${_MY_PARAMS_POSTFIX})
+
+	create_app_lib(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}
+			POSTFIX ${_MY_PARAMS_POSTFIX})
+
+	message("ALL_LIB: ${ALL_LIB}")
 
 	#Create linker target: add object library to executable
-	add_executable(${EXE_NAME} $<TARGET_OBJECTS:${PROJECT_OBJ_LIB}>)
+	add_executable(${EXE_NAME} "${APP_DIR}/main_ns.c")
+
+	target_link_libraries(${EXE_NAME} ${ALL_LIB})
 
 	#Set common linker flags
 	config_setting_shared_linker_flags(${EXE_NAME})
@@ -267,38 +347,6 @@ function(set_up_app_build)
 	endforeach(flag)
 
 	embedded_set_target_linker_file(TARGET ${EXE_NAME} PATH "${NS_SCATTER_FILE_NAME}")
-
-	#Add the RTX library
-	if(NOT DEFINED RTX_LIB_PATH)
-		message(FATAL_ERROR "ERROR: Incomplete Configuration: RTX_LIB_PATH is not defined.")
-	endif()
-	target_link_libraries(${EXE_NAME} "${RTX_LIB_PATH}")
-
-	#Add the PSA API compliance test libraries
-	if(PSA_API_TEST_NS)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/val/val_nspe.a")
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/platform/pal_nspe.a")
-	endif()
-	if(PSA_API_TEST_NS AND PSA_API_TEST_INTERNAL_TRUSTED_STORAGE)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/internal_trusted_storage/test_combine.a")
-	endif()
-	if(PSA_API_TEST_NS AND PSA_API_TEST_PROTECTED_STORAGE)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/protected_storage/test_combine.a")
-	endif()
-	if(PSA_API_TEST_NS AND PSA_API_TEST_CRYPTO)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/crypto/test_combine.a")
-	endif()
-	if(PSA_API_TEST_NS AND PSA_API_TEST_INITIAL_ATTESTATION)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/initial_attestation/test_combine.a")
-	endif()
-	if(PSA_API_TEST_NS AND PSA_API_TEST_IPC)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/ff/ipc/test_combine.a")
-	endif()
-
-	if(NOT DEFINED PLATFORM_LINK_INCLUDES)
-		message(FATAL_ERROR "ERROR: Incomplete Configuration: PLATFORM_LINK_INCLUDES is not defined.")
-	endif()
-	embedded_set_target_link_includes(TARGET ${EXE_NAME} INCLUDES "${PLATFORM_LINK_INCLUDES}")
 
 	#Generate binary file from axf
 	compiler_generate_binary_output(${EXE_NAME})
@@ -352,31 +400,6 @@ function(set_up_app_build)
 	if (BL2)
 		#Add BL2 and MCUBOOT_IMAGE_NUMBER defines to linker to resolve symbols in region_defs.h and flash_layout.h
 		embedded_set_target_link_defines(TARGET ${EXE_NAME} DEFINES "BL2" "MCUBOOT_IMAGE_NUMBER=${MCUBOOT_IMAGE_NUMBER}")
-	endif()
-
-	#We depend on the non secure tests. See if the library target is available.
-	if(TARGET tfm_non_secure_tests)
-		#If yes, then use the library.
-		target_link_libraries(${EXE_NAME} tfm_non_secure_tests)
-		#Ensure library is built first.
-		add_dependencies(${EXE_NAME} tfm_non_secure_tests)
-	endif()
-
-	#Ensure secure_fw is built before our executable.
-	add_dependencies(${EXE_NAME} ${S_BIN})
-
-	if (NOT DEFINED TFM_MULTI_CORE_TOPOLOGY OR NOT TFM_MULTI_CORE_TOPOLOGY)
-		if (NOT DEFINED S_VENEER_PATH)
-			if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/../secure_fw)
-				set (S_VENEER_PATH "${CMAKE_CURRENT_BINARY_DIR}/../secure_fw")
-			else()
-				message(FATAL_ERROR "No valid path for S_VENEER_PATH, secure_fw is built?")
-			endif()
-		endif()
-
-		#Add the veneers to the executable.
-		set(S_VENEER_FILE "${S_VENEER_PATH}/${VENEER_NAME}")
-		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_LIBRARIES ${S_VENEER_FILE})
 	endif()
 
 	#Collect executables to common location: build/install/outputs/

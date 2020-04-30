@@ -273,8 +273,12 @@ function(compiler_preprocess_file)
 		list(APPEND _LOCAL_CMAKE_C_FLAGS_CPU "${_C_FLAG}")
 	endforeach()
 
+	get_property(INCLUDE_DIRECTORIES DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY INCLUDE_DIRECTORIES)
+	foreach (dir ${INCLUDE_DIRECTORIES})
+		set(i_args ${i_args} -I"${dir}")
+	endforeach()
 	add_custom_command(OUTPUT ${_MY_PARAMS_DST}
-		COMMAND ${CMAKE_C_COMPILER} ${_LOCAL_CMAKE_C_FLAGS_CPU} -E -P -xc ${_FLAGS} ${_MY_PARAMS_SRC} -o ${_MY_PARAMS_DST}
+		COMMAND ${CMAKE_C_COMPILER} ${_LOCAL_CMAKE_C_FLAGS_CPU} ${i_args} -E -P -xc ${_FLAGS} ${_MY_PARAMS_SRC} -o ${_MY_PARAMS_DST}
 		DEPENDS ${_MY_PARAMS_SRC}
 		COMMENT "Preprocess the ${_MY_PARAMS_SRC} file"
 	)
