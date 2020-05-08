@@ -24,6 +24,7 @@ endif()
 #Configure the default build type
 set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type (i.e. Debug)")
 
+message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 #Ignore case on the cmake build types
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE)
 

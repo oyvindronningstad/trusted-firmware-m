@@ -273,9 +273,6 @@ function(create_app_lib)
 		add_dependencies(${ALL_LIB} tfm_non_secure_tests)
 	endif()
 
-	#Ensure secure_fw is built before our executable.
-	add_dependencies(${ALL_LIB} ${S_BIN})
-
 	if (NOT DEFINED TFM_MULTI_CORE_TOPOLOGY OR NOT TFM_MULTI_CORE_TOPOLOGY)
 		if (NOT DEFINED S_VENEER_PATH)
 			if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/../secure_fw)
@@ -325,7 +322,6 @@ function(set_up_app_build)
 	set(S_BIN ${_MY_PARAMS_S_TARGET}${_MY_PARAMS_POSTFIX})
 	set(FULL_NAME ${_MY_PARAMS_FULL_BIN}${_MY_PARAMS_POSTFIX})
 	set(SIGN_NAME ${_MY_PARAMS_SIGN_BIN}${_MY_PARAMS_POSTFIX})
-	set(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}${_MY_PARAMS_POSTFIX}.o)
 	set(ALL_LIB ${PROJECT_NAME}_all${_MY_PARAMS_POSTFIX})
 
 	create_app_lib(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}
@@ -337,6 +333,9 @@ function(set_up_app_build)
 	add_executable(${EXE_NAME} "${APP_DIR}/main_ns.c")
 
 	target_link_libraries(${EXE_NAME} ${ALL_LIB})
+
+	#Ensure secure_fw is built before our executable.
+	add_dependencies(${EXE_NAME} ${S_BIN})
 
 	#Set common linker flags
 	config_setting_shared_linker_flags(${EXE_NAME})
@@ -416,7 +415,11 @@ function(set_up_app_build)
 			DESTINATION outputs/fvp/)
 endfunction()
 
-if (LINK_TO_BOTH_MEMORY_REGION)
+message("APP_LIB_ONLY: ${APP_LIB_ONLY}")
+if (APP_LIB_ONLY)
+	message("APP_LIB_ONLY: ${APP_LIB_ONLY}")
+	create_app_lib(VENEER_NAME s_veneers)
+elseif (LINK_TO_BOTH_MEMORY_REGION)
 	#Link to primary memory region
 	set_up_app_build(NS_TARGET     ${PROJECT_NAME}
 					 S_TARGET      tfm_s

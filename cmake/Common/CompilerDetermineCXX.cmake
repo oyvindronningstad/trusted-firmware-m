@@ -18,12 +18,14 @@ if(NOT DEFINED CMAKE_CXX_COMPILER)
 of your compiler executable")
 endif(NOT DEFINED CMAKE_CXX_COMPILER)
 
+message("CMAKE_CXX_COMPILER: ${CMAKE_CXX_COMPILER}")
+
 get_filename_component(_CXX_COMPILER_NAME ${CMAKE_CXX_COMPILER} NAME)
 
 if (_CXX_COMPILER_NAME MATCHES "^.*armclang(\\.exe)?$")
 	set(CMAKE_CXX_COMPILER_ID "ARMCLANG" CACHE INTERNAL "C++ compiler ID" FORCE)
 	set(ARM_TOOLCHAIN_FILE "Compiler/ARMClang-CXX")
-elseif (_CXX_COMPILER_NAME MATCHES "^.*gcc(\\.exe)?$")
+elseif (_CXX_COMPILER_NAME MATCHES "^.*g(cc|\\+\\+)(\\.exe)?$")
 	set(CMAKE_CXX_COMPILER_ID "GNUARM" CACHE INTERNAL "C++ compiler ID" FORCE)
 	set(ARM_TOOLCHAIN_FILE "Compiler/GNUARM-CXX")
 elseif (_CXX_COMPILER_NAME MATCHES "^.*iccarm(\\.exe)?$")
