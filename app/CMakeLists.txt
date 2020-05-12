@@ -70,11 +70,7 @@ endif()
 
 embedded_include_directories(PATH ${TFM_ROOT_DIR}/app ABSOLUTE)
 
-set(NS_APP_SRC "${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Config/RTX_Config.c"
-	"${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Source/rtx_lib.c"
-	"${APP_DIR}/main_ns.c"
-	"${APP_DIR}/tfm_integ_test.c"
-	"${APP_DIR}/os_wrapper_cmsis_rtos_v2.c"
+set(NS_APP_SRC "${APP_DIR}/tfm_integ_test.c"
 	"${TFM_ROOT_DIR}/interface/src/log/tfm_log_raw.c"
 	)
 
@@ -194,27 +190,33 @@ embedded_set_target_linker_file(TARGET ${PROJECT_NAME} PATH  "${NS_SCATTER_FILE_
 set(PROJECT_OBJ_LIB ${PROJECT_NAME}_obj_lib)
 add_library(${PROJECT_OBJ_LIB} OBJECT ${ALL_SRC_C} ${ALL_SRC_C_NS} ${ALL_SRC_ASM} ${ALL_SRC_ASM_NS} ${NS_APP_SRC})
 
+set(RTX_OBJ_LIB ${PROJECT_NAME}_rtx_obj_lib)
+add_library(${RTX_OBJ_LIB}
+	"${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Config/RTX_Config.c"
+	"${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Source/rtx_lib.c")
+
 #Set common compiler flags
 config_setting_shared_compiler_flags(${PROJECT_OBJ_LIB})
+config_setting_shared_compiler_flags(${RTX_OBJ_LIB})
 
 #Set macro definitions
 set(TARGET_COMPILE_DEFINITIONS __thumb2__ __DOMAIN_NS=1 DOMAIN_NS=__DOMAIN_NS)
 target_compile_definitions(${PROJECT_OBJ_LIB} PRIVATE ${TARGET_COMPILE_DEFINITIONS})
+target_compile_definitions(${RTX_OBJ_LIB} PRIVATE ${TARGET_COMPILE_DEFINITIONS})
 
 #Set include directories.
 embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${TEST_INTERFACE_DIR}/include ABSOLUTE APPEND)
 embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${INTERFACE_DIR}/include ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${TFM_ROOT_DIR} ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${TFM_ROOT_DIR}/secure_fw/spm ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${TFM_ROOT_DIR}/secure_fw/core/include ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Include ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${CMSIS_5_DIR}/CMSIS/RTOS2/Include ABSOLUTE APPEND)
-embedded_target_include_directories(TARGET ${PROJECT_OBJ_LIB} PATH ${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Config  ABSOLUTE APPEND)
+target_include_directories(${PROJECT_OBJ_LIB} PUBLIC ${TFM_ROOT_DIR})
+target_include_directories(${RTX_OBJ_LIB} PUBLIC ${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Include)
+target_include_directories(${RTX_OBJ_LIB} PUBLIC ${CMSIS_5_DIR}/CMSIS/RTOS2/Include)
+target_include_directories(${RTX_OBJ_LIB} PUBLIC ${CMSIS_5_DIR}/CMSIS/RTOS2/RTX/Config)
 
 if (NOT DEFINED TFM_NS_CLIENT_IDENTIFICATION)
 	message(FATAL_ERROR "Incomplete build configuration: TFM_NS_CLIENT_IDENTIFICATION is undefined.")
 elseif (TFM_NS_CLIENT_IDENTIFICATION)
 	target_compile_definitions(${PROJECT_OBJ_LIB} PRIVATE TFM_NS_CLIENT_IDENTIFICATION)
+	target_compile_definitions(${RTX_OBJ_LIB} PRIVATE TFM_NS_CLIENT_IDENTIFICATION)
 endif()
 
 add_subdirectory(${TFM_ROOT_DIR}/test ${CMAKE_BINARY_DIR}/test/non_secure_test)
@@ -254,9 +256,23 @@ function(set_up_app_build)
 	set(FULL_NAME ${_MY_PARAMS_FULL_BIN}${_MY_PARAMS_POSTFIX})
 	set(SIGN_NAME ${_MY_PARAMS_SIGN_BIN}${_MY_PARAMS_POSTFIX})
 	set(VENEER_NAME ${_MY_PARAMS_VENEER_NAME}${_MY_PARAMS_POSTFIX}.o)
+	set(LIB_NAME lib${EXE_NAME})
 
-	#Create linker target: add object library to executable
-	add_executable(${EXE_NAME} $<TARGET_OBJECTS:${PROJECT_OBJ_LIB}>)
+	#Create master lib with OS-independent parts.
+	add_library(${LIB_NAME} $<TARGET_OBJECTS:${PROJECT_OBJ_LIB}>)
+
+	#Create linker target
+	add_executable(${EXE_NAME}
+		"${APP_DIR}/main_ns.c"
+		"${APP_DIR}/os_wrapper_cmsis_rtos_v2.c")
+
+	#Add the RTX library
+	if(NOT DEFINED RTX_LIB_PATH)
+		message(FATAL_ERROR "ERROR: Incomplete Configuration: RTX_LIB_PATH is not defined.")
+	endif()
+
+	#Link with libraries
+	target_link_libraries(${EXE_NAME} "${RTX_LIB_PATH}" ${RTX_OBJ_LIB} ${LIB_NAME} ${PROJECT_OBJ_LIB})
 
 	#Set common linker flags
 	config_setting_shared_linker_flags(${EXE_NAME})
@@ -268,28 +284,22 @@ function(set_up_app_build)
 
 	embedded_set_target_linker_file(TARGET ${EXE_NAME} PATH "${NS_SCATTER_FILE_NAME}")
 
-	#Add the RTX library
-	if(NOT DEFINED RTX_LIB_PATH)
-		message(FATAL_ERROR "ERROR: Incomplete Configuration: RTX_LIB_PATH is not defined.")
-	endif()
-	target_link_libraries(${EXE_NAME} "${RTX_LIB_PATH}")
-
 	#Add the PSA API compliance test libraries
 	if(PSA_API_TEST_NS)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/val/val_nspe.a")
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/platform/pal_nspe.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/val/val_nspe.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/platform/pal_nspe.a")
 	endif()
 	if(PSA_API_TEST_NS AND (PSA_API_TEST_INTERNAL_TRUSTED_STORAGE OR PSA_API_TEST_PROTECTED_STORAGE OR PSA_API_TEST_STORAGE))
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/storage/test_combine.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/dev_apis/storage/test_combine.a")
 	endif()
 	if(PSA_API_TEST_NS AND PSA_API_TEST_CRYPTO)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/crypto/test_combine.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/dev_apis/crypto/test_combine.a")
 	endif()
 	if(PSA_API_TEST_NS AND PSA_API_TEST_INITIAL_ATTESTATION)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/dev_apis/initial_attestation/test_combine.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/dev_apis/initial_attestation/test_combine.a")
 	endif()
 	if(PSA_API_TEST_NS AND PSA_API_TEST_IPC)
-		target_link_libraries(${EXE_NAME} "${PSA_API_TEST_BUILD_PATH}/ff/ipc/test_combine.a")
+		target_link_libraries(${LIB_NAME} PUBLIC "${PSA_API_TEST_BUILD_PATH}/ff/ipc/test_combine.a")
 	endif()
 
 	if(NOT DEFINED PLATFORM_LINK_INCLUDES)
@@ -354,13 +364,13 @@ function(set_up_app_build)
 	#We depend on the non secure tests. See if the library target is available.
 	if(TARGET tfm_non_secure_tests)
 		#If yes, then use the library.
-		target_link_libraries(${EXE_NAME} tfm_non_secure_tests)
+		target_link_libraries(${LIB_NAME} PUBLIC tfm_non_secure_tests)
 		#Ensure library is built first.
-		add_dependencies(${EXE_NAME} tfm_non_secure_tests)
+		add_dependencies(${LIB_NAME} tfm_non_secure_tests)
 	endif()
 
 	#Ensure secure_fw is built before our executable.
-	add_dependencies(${EXE_NAME} ${S_BIN})
+	add_dependencies(${LIB_NAME} ${S_BIN})
 
 	if (NOT DEFINED TFM_MULTI_CORE_TOPOLOGY OR NOT TFM_MULTI_CORE_TOPOLOGY)
 		if (NOT DEFINED S_VENEER_PATH)
@@ -373,7 +383,8 @@ function(set_up_app_build)
 
 		#Add the veneers to the executable.
 		set(S_VENEER_FILE "${S_VENEER_PATH}/${VENEER_NAME}")
-		set_property(TARGET ${EXE_NAME} APPEND PROPERTY LINK_LIBRARIES ${S_VENEER_FILE})
+		target_link_libraries(${LIB_NAME} PUBLIC ${S_VENEER_FILE})
+		target_include_directories(${LIB_NAME} PUBLIC ${INTERFACE_DIR}/include)
 	endif()
 
 	#Collect executables to common location: build/install/outputs/

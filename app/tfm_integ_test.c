@@ -11,7 +11,6 @@
 #include <stdbool.h>
 
 #include "tfm_api.h"
-#include "cmsis_os2.h"
 #include "tfm_nspm_api.h"
 
 #include "tfm_integ_test.h"
@@ -26,6 +25,7 @@
 #endif
 
 #ifdef CORE_TEST_INTERACTIVE
+#include "cmsis_os2.h"
 #include "test/test_services/tfm_core_test/core_test_defs.h"
 #include "tfm_veneers.h"
 
