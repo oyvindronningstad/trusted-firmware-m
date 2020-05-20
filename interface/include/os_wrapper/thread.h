@@ -41,6 +41,13 @@ void *os_wrapper_thread_new(const char *name, int32_t stack_size,
 void *os_wrapper_thread_get_handle(void);
 
 /**
+ * \brief Gets the name of the thread with the given handle.
+ *
+ * \return Returns the thread name, or NULL in case of error.
+ */
+const char *os_wrapper_thread_get_name(void *handle);
+
+/**
  * \brief Gets thread priority
  *
  * \param[in]  handle   Thread handle

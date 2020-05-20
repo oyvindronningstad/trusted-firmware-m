@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#include "cmsis_os2.h"
+#include "os_wrapper/thread.h"
 #include "tfm_ns_svc.h"
 
 /* Translation table pair between OS threads and client IDs */
@@ -45,11 +45,11 @@ static uint32_t get_client_id(void)
     static uint32_t test_table_size = (sizeof(test_ns_policy_table) /
                                        sizeof(test_ns_policy_table[0]));
     const char*  p_thread_name;
-    osThreadId_t thread_id;
+    void *thread_id;
 
     /* Get thread name */
-    thread_id = osThreadGetId();
-    p_thread_name = osThreadGetName(thread_id);
+    thread_id = os_wrapper_thread_get_handle();
+    p_thread_name = os_wrapper_thread_get_name(thread_id);
 
     for (i = 0; i < test_table_size; i++) {
         if (strcmp(test_ns_policy_table[i].t_name, p_thread_name) == 0) {

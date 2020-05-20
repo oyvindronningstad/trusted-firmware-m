@@ -150,6 +150,11 @@ void *os_wrapper_thread_get_handle(void)
     return (void *)osThreadGetId();
 }
 
+const char *os_wrapper_thread_get_name(void *handle)
+{
+    return osThreadGetName((osThreadId_t)handle);
+}
+
 uint32_t os_wrapper_thread_get_priority(void *handle, uint32_t *priority)
 {
     osPriority_t prio;
