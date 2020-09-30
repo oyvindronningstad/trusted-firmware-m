@@ -82,6 +82,8 @@ target_sources(platform_ns
 target_compile_definitions(platform_ns
     PUBLIC
         NRF5340_XXAA_APPLICATION
+        NRF_TRUSTZONE_NONSECURE
+        DOMAIN_NS=1
 )
 
 #========================= Platform BL2 =======================================#

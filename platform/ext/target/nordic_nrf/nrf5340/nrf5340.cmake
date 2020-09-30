@@ -7,8 +7,6 @@
 
 # This file gathers all nRF5340 specific files in the application.
 
-set (SECURE_UART1 ON)
-
 # nRF5340 has a Cortex M33 CPU.
 include("Common/CpuM33")
 
