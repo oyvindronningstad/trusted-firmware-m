@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------
 # Copyright (c) 2020, Arm Limited. All rights reserved.
+# Copyright (c) 2020, Nordic Semiconductor ASA.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -13,22 +14,16 @@ set(CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 # Specify the location of platform specific build dependencies.
 
 target_add_scatter_file(tfm_s
-    $<$<C_COMPILER_ID:ARMClang>:${CMAKE_BINARY_DIR}/generated/platform/ext/common/armclang/tfm_common_s.sct>
     $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/nordic_nrf_s.ld>
-    $<$<C_COMPILER_ID:IAR>:${CMAKE_BINARY_DIR}/generated/platform/ext/common/iar/tfm_common_s.icf>
 )
 
 if(NS)
     target_add_scatter_file(tfm_ns
-        $<$<C_COMPILER_ID:ARMClang>:${CMAKE_CURRENT_SOURCE_DIR}/armclang/nordic_nrf_ns.sct>
         $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/nordic_nrf_ns.ld>
-        $<$<C_COMPILER_ID:IAR>:${CMAKE_CURRENT_SOURCE_DIR}/iar/nordic_nrf_ns.icf>
     )
     target_link_libraries(tfm_ns
         PRIVATE
-            $<$<C_COMPILER_ID:ARMClang>:${CMSIS_5_PATH}/RTOS2/RTX/Library/ARM/RTX_V8MMN.lib>
             $<$<C_COMPILER_ID:GNU>:${CMSIS_5_PATH}/RTOS2/RTX/Library/GCC/libRTX_V8MMN.a>
-            $<$<C_COMPILER_ID:IAR>:${CMSIS_5_PATH}/RTOS2/RTX/Library/IAR/RTX_V8MMN.a>
             # These libraries require linking to the veneers, so the veneers are
             # marked again here as a link dependency to get the ordering right
             tfm_s_veneers
@@ -37,9 +32,7 @@ endif()
 
 if(BL2)
     target_add_scatter_file(bl2
-            $<$<C_COMPILER_ID:ARMClang>:${CMAKE_CURRENT_SOURCE_DIR}/armclang/nordic_nrf_bl2.sct>
             $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/nordic_nrf_bl2.ld>
-            $<$<C_COMPILER_ID:IAR>:${CMAKE_CURRENT_SOURCE_DIR}/iar/nordic_nrf_bl2.icf>
     )
 endif()
 
