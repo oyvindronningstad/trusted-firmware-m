@@ -26,7 +26,7 @@
  * the Cortex-M33 core, memory permissions and security attribution
  * on the nRF5340 platform.
  *
- * Memory permisssions and security attribution are configured via
+ * Memory permissions and security attribution are configured via
  * the System Protection Unit (SPU) which is the nRF specific Implementation
  * Defined Attribution Unit (IDAU).
  */
