@@ -14,7 +14,7 @@ set(CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 # Specify the location of platform specific build dependencies.
 
 target_add_scatter_file(tfm_s
-    $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/nordic_nrf_s.ld>
+    $<$<C_COMPILER_ID:GNU>:${CMAKE_BINARY_DIR}/generated/platform/ext/common/gcc/nordic_nrf_s.ld>
 )
 
 if(NS)
