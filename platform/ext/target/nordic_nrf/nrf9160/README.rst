@@ -30,12 +30,9 @@ following commands:
 .. code:: bash
 
     $ mkdir build && cd build
-    $ cmake -G"Unix Makefiles" \
-            -DPROJ_CONFIG=`readlink -f ../configs/ConfigDefault.cmake` \
-            -DTARGET_PLATFORM=nrf9160dk_nrf9160 \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DBL2=False \
-            -DCOMPILER=GNUARM \
+    $ mkdir build && cd build
+    $ cmake -DTFM_PLATFORM=nordic_nrf/nrf9160dk_nrf9160 \
+            -DCMAKE_TOOLCHAIN_FILE=../toolchain_GNUARM.cmake \
             ../
     $ make install
 

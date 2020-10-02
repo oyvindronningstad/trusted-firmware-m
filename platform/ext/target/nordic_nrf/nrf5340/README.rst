@@ -37,12 +37,9 @@ following commands:
 .. code:: bash
 
     $ mkdir build && cd build
-    $ cmake -G"Unix Makefiles" \
-            -DPROJ_CONFIG=`readlink -f ../configs/ConfigDefault.cmake` \
-            -DTARGET_PLATFORM=nrf5340pdk_nrf5340_cpuapp \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DBL2=False \
-            -DCOMPILER=GNUARM \
+    $ mkdir build && cd build
+    $ cmake -DTFM_PLATFORM=nordic_nrf/nrf5340pdk_nrf5340_cpuapp \
+            -DCMAKE_TOOLCHAIN_FILE=../toolchain_GNUARM.cmake \
             ../
     $ make install
 
