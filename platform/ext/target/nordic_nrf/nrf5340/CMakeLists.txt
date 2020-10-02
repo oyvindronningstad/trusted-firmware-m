@@ -1,5 +1,6 @@
 #-------------------------------------------------------------------------------
 # Copyright (c) 2020, Arm Limited. All rights reserved.
+# Copyright (c) 2020, Nordic Semiconductor ASA.
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -22,26 +23,20 @@ target_include_directories(platform_region_defs
 # Specify the location of platform specific build dependencies.
 target_sources(tfm_s
     PRIVATE
-    $<$<C_COMPILER_ID:ARMClang>:${CMAKE_CURRENT_SOURCE_DIR}/armclang/startup_nrf5340_s.s>
     $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/startup_nrf5340_s.S>
-    $<$<C_COMPILER_ID:IAR>:${CMAKE_CURRENT_SOURCE_DIR}/iar/startup_nrf5340_s.s>
 )
 
 if(NS)
     target_sources(tfm_ns
         PRIVATE
-            $<$<C_COMPILER_ID:ARMClang>:${CMAKE_CURRENT_SOURCE_DIR}/armclang/startup_nrf5340_ns.s>
             $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/startup_nrf5340_ns.S>
-            $<$<C_COMPILER_ID:IAR>:${CMAKE_CURRENT_SOURCE_DIR}/iar/startup_nrf5340_ns.s>
     )
 endif()
 
 if(BL2)
     target_sources(bl2
         PRIVATE
-            $<$<C_COMPILER_ID:ARMClang>:${CMAKE_CURRENT_SOURCE_DIR}/armclang/startup_nrf5340_bl2.s>
             $<$<C_COMPILER_ID:GNU>:${CMAKE_CURRENT_SOURCE_DIR}/gcc/startup_nrf5340_bl2.S>
-            $<$<C_COMPILER_ID:IAR>:${CMAKE_CURRENT_SOURCE_DIR}/iar/startup_nrf5340_bl2.s>
     )
 endif()
 
