@@ -37,7 +37,6 @@ following commands:
 .. code:: bash
 
     $ mkdir build && cd build
-    $ mkdir build && cd build
     $ cmake -DTFM_PLATFORM=nordic_nrf/nrf5340pdk_nrf5340_cpuapp \
             -DCMAKE_TOOLCHAIN_FILE=../toolchain_GNUARM.cmake \
             ../

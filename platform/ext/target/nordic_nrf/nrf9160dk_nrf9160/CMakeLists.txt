@@ -7,6 +7,7 @@
 
 cmake_policy(SET CMP0076 NEW)
 set(CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(NRF_BOARD_SELECTED True)
 
 add_subdirectory(../nrf9160 nrf9160)
 

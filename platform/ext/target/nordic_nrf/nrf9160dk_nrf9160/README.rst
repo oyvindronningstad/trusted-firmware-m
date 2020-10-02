@@ -30,7 +30,6 @@ following commands:
 .. code:: bash
 
     $ mkdir build && cd build
-    $ mkdir build && cd build
     $ cmake -DTFM_PLATFORM=nordic_nrf/nrf9160dk_nrf9160 \
             -DCMAKE_TOOLCHAIN_FILE=../toolchain_GNUARM.cmake \
             ../

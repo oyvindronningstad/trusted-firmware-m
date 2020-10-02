@@ -9,6 +9,16 @@
 cmake_policy(SET CMP0076 NEW)
 set(CMAKE_CURRENT_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+if (NOT NRF_BOARD_SELECTED)
+    if (${TFM_PLATFORM} STREQUAL "nordic_nrf/nrf5340")
+        set(hint nordic_nrf/nrf5340pdk_nrf5340_cpuapp)
+    else()
+        set(hint nordic_nrf/nrf9160dk_nrf9160)
+    endif()
+    message(FATAL_ERROR "Please select one of the nRF boards. "
+        "Instead of '${TFM_PLATFORM}', choose e.g. '${hint}'.")
+endif()
+
 #========================= Platform common defs ===============================#
 
 # Specify the location of platform specific build dependencies.
