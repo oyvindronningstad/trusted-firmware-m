@@ -69,7 +69,6 @@ macro(_compiler_reload)
         -ffunction-sections
         -fno-builtin
         -fshort-enums
-        -fshort-wchar
         -funsigned-char
         -mthumb
         -nostdlib
